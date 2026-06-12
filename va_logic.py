@@ -1,7 +1,11 @@
 import os
 import sqlite3
 import json
+from flask import Flask, request, jsonify
 from openai import OpenAI
+
+# Initialize Flask app
+app = Flask(__name__)
 
 # CRITICAL SECURITY FIX: The API key is completely hidden. 
 # It will now be read securely from Render's Environment Variables.
@@ -130,3 +134,35 @@ def get_bot_response(user_message, session_id):
     except Exception as e:
         print(f"ERROR OCCURRED IN AI PROCESSING: {e}") 
         return "Mon esprit a eu un petit problème, little bird 🥺 mais je suis là. Réessaie, d'accord ? Je t'aime. ❤️"
+
+# --- WEB ENDPOINTS (Flask API Connection) ---
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Chanda 2.0 Backend is running smoothly! ❤️", 200
+
+@app.route("/chat", methods=["POST"])
+def chat_endpoint():
+    """
+    Expects JSON input:
+    {
+        "message": "User's chat message text",
+        "session_id": "Unique identifier for the session (e.g. 'kenza-vault')"
+    }
+    """
+    data = request.get_json() or {}
+    user_message = data.get("message")
+    session_id = data.get("session_id", "default_session")
+    
+    if not user_message:
+        return jsonify({"error": "Missing 'message' parameter"}), 400
+        
+    bot_reply = get_bot_response(user_message, session_id)
+    return jsonify({"response": bot_reply})
+
+# --- RENDER PORT BINDING ---
+if __name__ == "__main__":
+    # Render reads this 'PORT' environment variable automatically to accept live web traffic.
+    # If running locally, it defaults gracefully back to port 5000.
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
